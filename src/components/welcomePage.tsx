@@ -1,31 +1,57 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 // Assets
 import logo from "../assets/a.jpg";
 import bgVideo from "../assets/background.mp4";
 import nanosoft from "../assets/nanosoft.jpg";
 
 const WelcomePage = () => {
-  const [count, setCount] = useState(10);
   const [showContent, setShowContent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentDateStr, setCurrentDateStr] = useState("2024.09.01");
+  const rafIdRef = useRef<number | null>(null);
 
-  // Countdown timer
+  // 10s date animation from 2024.09.01 to 2025.09.26
   useEffect(() => {
     if (!loading) return;
 
-    const timer = setInterval(() => {
-      setCount((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setShowContent(true);
-          setLoading(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 500); // 0.5s interval
+    const startUtc = Date.UTC(2024, 9, 1); // 2024-09-01 UTC
+    const endUtc = Date.UTC(2025, 9, 26); // 2025-09-26 UTC
+    const totalMs = endUtc - startUtc;
+    const durationMs = 10_000; // 10 seconds
+    const startedAt = performance.now();
 
-    return () => clearInterval(timer);
+    const formatUtc = (msUtc: number) => {
+      const d = new Date(msUtc);
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(d.getUTCDate()).padStart(2, "0");
+      return `${y}.${m}.${day}`;
+    };
+
+    const tick = () => {
+      const now = performance.now();
+      const elapsed = now - startedAt;
+      const clamped = Math.min(Math.max(elapsed, 0), durationMs);
+      const progress = clamped / durationMs; // 0..1
+
+      const msAtProgress = startUtc + progress * totalMs;
+      setCurrentDateStr(formatUtc(msAtProgress));
+
+      if (elapsed < durationMs) {
+        rafIdRef.current = requestAnimationFrame(tick);
+      } else {
+        setShowContent(true);
+        setLoading(false);
+      }
+    };
+
+    // initialize display at start date
+    setCurrentDateStr("2024.09.01");
+    rafIdRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+    };
   }, [loading]);
 
   // Full screen layout with background video
@@ -88,8 +114,8 @@ const WelcomePage = () => {
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold mb-8 text-white/80 px-4">
             Publishing...
           </h1>
-          <p className="mt-4 text-6xl md:text-8xl lg:text-9xl font-extrabold text-white/90">
-            {count}
+          <p className="mt-4 text-5xl md:text-7xl lg:text-8xl font-extrabold text-white/90 tracking-widest">
+            {currentDateStr}
           </p>
         </div>
       </FullScreenLayout>
@@ -114,8 +140,9 @@ const WelcomePage = () => {
         </p>
         <button
           onClick={() => {
-            setCount(10);
             setLoading(true);
+            setShowContent(false);
+            setCurrentDateStr("2024.09.01");
           }}
           className="font-bold px-8 py-3 md:px-10 md:py-4 rounded-full bg-red-900/50 text-white/80 border border-red-500 hover:bg-red-800/50 transition text-lg md:text-xl"
         >
